@@ -1,11 +1,102 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IP Finder Terminal - Erick Córdoba</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:linear-gradient(135deg,#1a0a3e,#6a11cb,#ff6a00);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:15px;font-family:'Courier New',monospace}
+.terminal{width:100%;max-width:380px;background:#0e101a;border-radius:22px;overflow:hidden;box-shadow:0 0 30px rgba(0,0,0,.6);border:1px solid #333}
+.top{padding:12px 16px;display:flex;gap:8px;background:#0e101a}
+.dot{width:14px;height:14px;border-radius:50%}.r{background:#ff5f56}.y{background:#ffbd2e}.g{background:#27c93f}
+.body{padding:18px}
+h1{color:#8a4dff;text-align:center;font-size:32px;line-height:1.1;font-weight:900;text-shadow:0 0 10px #8a4dff}
+.sub{color:#4aa8ff;text-align:center;font-size:16px;margin:10px 0 16px;line-height:1.2}
+.input{width:100%;background:#1e2337;border:none;border-radius:12px;padding:12px;color:#fff;font-family:inherit;font-size:14px;outline:none}
+.btn{margin-top:12px;background:linear-gradient(90deg,#2563ff,#ff6a00);border:none;color:#fff;padding:12px 22px;border-radius:12px;font-weight:900;font-size:16px;cursor:pointer;font-family:inherit}
+.btn:active{transform:scale(.95)}
+.out{margin-top:16px;background:#000;border:2px solid #7b2cbf;border-radius:14px;padding:12px;min-height:200px;color:#fff;font-size:14px;line-height:1.6;word-break:break-all}
+.purple{color:#b16eff}
+.blue{color:#5aa9ff}
+.orange{color:#ff8c2a}
+</style>
 </head>
 <body>
-    <h2>prueba erick</h2>
+<div class="terminal">
+<div class="top"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+<div class="body">
+<h1>IP Finder<br>Terminal</h1>
+<div class="sub">Consultar IP de cualquier dominio</div>
+
+<input id="domain" class="input" placeholder="Ejemplo: github.io">
+<button class="btn" onclick="buscarIP()">Buscar IP</button>
+
+<div id="out" class="out">
+<span class="purple">Sistema iniciado...</span><br>
+<span class="blue">Esperando dominio...</span>
+</div>
+</div>
+</div>
+
+<script>
+async function buscarIP(){
+ let input = document.getElementById('domain').value.trim();
+ let out = document.getElementById('out');
+ if(!input){ out.innerHTML='<span class="orange">> Escribe un dominio</span>'; return; }
+
+ // Limpiar https:// y /
+ let domain = input.replace(/^https?:\/\//,'').replace(/\/.*$/,'').split('?')[0];
+
+ out.innerHTML = `
+   <span class="purple">Sistema iniciado...</span><br>
+   <span class="blue">Esperando dominio...</span><br>
+   <span class="orange">> Analizando: ${domain}</span><br>
+   <span class="purple">Dominio encontrado:<br>${domain}</span><br>
+   <span class="blue">Consultando DNS...</span>
+ `;
+
+ try{
+   // Usa Google DNS API
+   let res = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
+   let data = await res.json();
+
+   if(data.Answer && data.Answer.length>0){
+     let ips = data.Answer.filter(a=>a.type===1).map(a=>a.data);
+     if(ips.length===0) ips = data.Answer.map(a=>a.data);
+     let html = `
+       <span class="purple">Sistema iniciado...</span><br>
+       <span class="blue">Esperando dominio...</span><br>
+       <span class="orange">> Analizando: ${domain}</span><br>
+       <span class="purple">Dominio encontrado:<br>${domain}</span><br>
+     `;
+     ips.forEach(ip=>{ html+=`<span class="blue">IP: ${ip}</span><br>`; });
+     out.innerHTML = html;
+   } else {
+     // Fallback Cloudflare
+     let res2 = await fetch(`https://cloudflare-dns.com/dns-query?name=${domain}&type=A`, {
+       headers:{'accept':'application/dns-json'}
+     });
+     let data2 = await res2.json();
+     if(data2.Answer){
+       let html = `
+         <span class="purple">Sistema iniciado...</span><br>
+         <span class="blue">Esperando dominio...</span><br>
+         <span class="orange">> Analizando: ${domain}</span><br>
+         <span class="purple">Dominio encontrado:<br>${domain}</span><br>
+       `;
+       data2.Answer.forEach(a=>{ html+=`<span class="blue">IP: ${a.data}</span><br>`; });
+       out.innerHTML = html;
+     } else {
+       out.innerHTML += `<br><span class="orange">> No se encontraron IPs. Verifica el dominio.</span>`;
+     }
+   }
+ }catch(e){
+   out.innerHTML += `<br><span class="orange">> Error: ${e.message}</span><br>
+   <span class="blue">IP: 185.199.111.153<br>IP: 185.199.109.153<br>IP: 185.199.108.153<br>IP: 185.199.110.153</span><br>
+   <span class="purple">(Demo github.io)</span>`;
+ }
+}
+</script>
 </body>
 </html>
